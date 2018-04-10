@@ -1,0 +1,38 @@
+mtask
+=====
+
+This is a plain multitasking scheduler, which implements cooperative
+multitasking. It is intented to be used on all ARM Cortex-M Microcontrollers.
+
+The stack frames are statically allocated. You need to specify how many
+stack frames of which size you need. You need to assign the PendSV and the
+SVC interrupt to the respective handlers in your trap vector table. Also
+make sure to define the global variable jiffies and count it up in your
+SysTick handler. Otherwise the task switching will not work. I recommend to
+configure your SysTick to 20 interrupts per second.
+
+The coroutines behave like threads on a normal kernel, but they don't really
+run in parallel. You need to call coroutine_yield() to suspend one and another
+will run. When all coroutines sleep, the idler runs until the next SysTick.
+Setting a trigger with coroutine_yield(), the SysTick won't wake up the
+coroutine. You need to trigger it with coroutine_trigger(). You can define
+contexts for a more precise distinction, which coroutine to wake. Context 0
+wakes all.
+
+To initialize mtask, call mtask_init(), then spawn some coroutines.
+Please note, that this will corrupt the return address of the current
+function. Don't let it return. You must coroutine_abort() it!
+
+coroutine_invoke_later() spawns a new one and it will eventually run.
+
+coroutine_invoke_urgent() is like a combination of coroutine_invoke_later()
+and coroutine_yield(). The new coroutine will run immediately. Don't do this
+in an interrupt. This is at the moment a known bug.
+
+When the coroutine-function returns, the stack frame is freed and the
+scheduler switches to the next coroutine. The same happens, when you
+call coroutine_abort().
+
+Define more triggers and contexts in mtask.h
+
+When you use SEGGER System View, compile with -DSEGGER_DEBUG to enable it.
