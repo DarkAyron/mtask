@@ -402,7 +402,7 @@ static void coroutine_start(void (*func) (unsigned long), unsigned long param, i
 #ifdef SEGGER_DEBUG
 		SEGGER_SYSVIEW_OnTaskCreate((unsigned)&coroutines[n]);
 #endif
-		memcpy(coroutines[n].name, name, strlen(name));
+		strcpy(coroutines[n].name, name);
 #ifdef SEGGER_DEBUG
 		info.TaskID = (unsigned)&coroutines[n];
 		info.sName = coroutines[n].name;
