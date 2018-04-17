@@ -125,9 +125,6 @@ struct coroutine {
 	int context;
 	void *stack;
 	char name[16];
-#ifdef FPU
-	int magicLink;
-#endif
 };
 
 struct coroutine coroutines[MAX_THREADS];
@@ -204,9 +201,6 @@ void mtask_init()
 		coroutines[n].state = STATE_TERMINATED;
 		coroutines[n].stack = (void *)(SYS_SP - n * STACK_SIZE);
 		coroutines[n].trigger = TRIGGER_NONE;
-#ifdef FPU
-		coroutines[n].magicLink = MAGIC_LINK;
-#endif
 	}
 	coroutineNum.cur = MAX_THREADS - 1;
 	currentTick = 0;
@@ -257,7 +251,6 @@ void PendSV_Handler()
 {
 	register void *nextsp;
 	register void *mySP;
-	register int magicLink;
 	__disable_irq();
 #ifdef CORTEX_M0
 	asm("push {r4 - r7}");
@@ -270,10 +263,7 @@ void PendSV_Handler()
 	asm("push {r4 - r11}");
 #endif
 	/* save the magic link */
-#ifdef FPU
-	asm("mov %r0, lr":"=l" (magicLink));
-	coroutines[coroutineNum.cur].magicLink = magicLink;
-#endif
+	asm("mov r10, lr");
 
 	/* save current SP */
 	asm volatile ("mov %r0, r13":"=l" (mySP));
@@ -286,10 +276,7 @@ void PendSV_Handler()
 	coroutineNum.cur = coroutineNum.next;
 
 	/* restore the magic link */
-#ifdef FPU
-	magicLink = coroutines[coroutineNum.cur].magicLink;
-	asm("mov lr, %r0"::"l" (magicLink));
-#endif
+	asm("mov lr, r10");
 
 	/* restore the rest and trigger rti */
 #ifdef CORTEX_M0
@@ -390,9 +377,6 @@ static void coroutine_start(void (*func) (unsigned long), unsigned long param, i
 	    (void *)(SYS_SP - n * STACK_SIZE - sizeof(struct stackFrame));
 	coroutines[n].state = STATE_RUNNING;
 	coroutines[n].trigger = TRIGGER_NONE;
-#ifdef FPU
-	coroutines[n].magicLink = MAGIC_LINK;
-#endif
 	frame = (struct stackFrame *)coroutines[n].stack;
 	frame->PC = (void *)func;
 	frame->LR = (void *)coroutine_end;
