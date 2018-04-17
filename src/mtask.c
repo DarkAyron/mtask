@@ -161,6 +161,19 @@ void cbSendTaskList(void)
 }
 #endif
 
+/* turn off the FPU */
+#ifdef FPU
+__attribute__ ((__always_inline__)) inline static void fpu_disable()
+{
+	asm(
+		"mrs r0, control\n"
+		"bic r0, #4\n"
+		"msr control, r0\n"
+		::: "r0"
+	);
+}
+#endif
+
 /* idle routine. Just wait until current tick has finished */
 static void coroutine_idle(unsigned long unused)
 {
@@ -310,7 +323,9 @@ static void coroutine_switchToNext()
 	else
 		SEGGER_SYSVIEW_OnIdle();
 #endif
-
+#ifdef FPU
+	fpu_disable();
+#endif
 	SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 	__enable_irq();
 }
@@ -438,6 +453,9 @@ int coroutine_invoke_urgent(void (*func) (unsigned long), unsigned long param, c
 		SEGGER_SYSVIEW_OnTaskStartExec((unsigned)
 					       &coroutines[coroutineNum.next]);
 #endif
+#ifdef FPU
+		fpu_disable();
+#endif
 		/* schedule a PendSV interrupt */
 		SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 	}
@@ -448,6 +466,9 @@ int coroutine_invoke_urgent(void (*func) (unsigned long), unsigned long param, c
 /* abort the current coroutine and free the slot */
 __attribute__ ((__always_inline__)) inline void coroutine_abort()
 {
+#ifdef FPU
+	fpu_disable();
+#endif
 	asm volatile ("svc 0");
 }
 
