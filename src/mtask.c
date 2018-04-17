@@ -410,7 +410,6 @@ enum triggers coroutine_yield(enum triggers trigger, int context)
 #endif
 	coroutine_switchToNext();
 	return coroutines[coroutineNum.cur].trigger;
-	asm volatile ("wfi");
 }
 
 /* set up a new coroutine-slot and invoke it eventually in the current or next tick */
